@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Матрица Математики</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #111827;
+            --bg-secondary: #1f2937;
+            --bg-tertiary: #374151;
+            --bg-interactive: #0ea5e9;
+            --bg-interactive-hover: #0284c7;
+            --text-primary: #ffffff;
+            --text-secondary: #9ca3af;
+            --text-accent: #38bdf8;
+            --modal-backdrop: rgba(0,0,0,0.7);
+            --btn-restart-bg: var(--bg-tertiary);
+            --btn-restart-text: var(--text-primary);
+            --hint-color: #facc15; /* yellow-400 */
+            --hint-glow-color: rgba(250, 204, 21, 0.75);
+        }
+        
+        html.light {
+            --bg-primary: #f3f4f6;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #e5e7eb;
+            --bg-interactive: #3b82f6;
+            --bg-interactive-hover: #2563eb;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --text-accent: #3b82f6;
+            --modal-backdrop: rgba(243, 244, 246, 0.7);
+            --btn-restart-bg: #d1d5db;
+            --btn-restart-text: #1f2937;
+        }
+
+        html, body {
+            height: 100vh; /* Use vh to ensure full viewport height */
+            width: 100vw;
+            overflow: hidden;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            touch-action: manipulation;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background-color 0.3s, color 0.3s;
+            display: flex; /* Use flexbox for layout */
+            flex-direction: column;
+            user-select: none; /* Disable text selection */
+            -webkit-user-select: none;
+        }
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            animation: fadeIn 0.5s ease-in-out;
+            background-color: var(--bg-primary);
+            padding-bottom: 50px; /* Space for banner ad */
+            box-sizing: border-box;
+        }
+        .screen.active {
+            display: flex;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.98); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .tile {
+            transition: transform 0.2s, box-shadow 0.2s, background-color 0.2s;
+            will-change: transform;
+            background-color: var(--bg-secondary);
+            color: var(--text-primary);
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1);
+            font-size: clamp(1rem, 5vw, 2rem);
+            font-weight: 700;
+        }
+        .tile.operator {
+             background-color: var(--bg-interactive);
+             color: white;
+             font-size: clamp(1.2rem, 6vw, 2.4rem); /* Make operators bigger */
+        }
+        .tile.selected {
+            box-shadow: 0 0 25px var(--text-accent);
+            z-index: 10;
+        }
+        .tile.hint-outline {
+            animation: hint-pulse 1.2s infinite;
+            z-index: 20;
+        }
+        @keyframes hint-pulse {
+            0% { box-shadow: 0 0 0 0px var(--hint-glow-color), 0 0 0 0px var(--hint-glow-color); }
+            70% { box-shadow: 0 0 15px 8px transparent, 0 0 0 4px var(--hint-glow-color); }
+            100% { box-shadow: 0 0 0 15px transparent, 0 0 0 4px transparent; }
+        }
+        .modal-backdrop {
+            height: 100%; /* Ensure modal covers full screen */
+        }
+        .path-line {
+            position: absolute;
+            background-color: var(--text-accent);
+            opacity: 0.7;
+            height: 5px;
+            border-radius: 3px;
+            transform-origin: left center;
+            pointer-events: none;
+            z-index: 5;
+        }
+        .theme-switcher {
+            appearance: none; width: 50px; height: 28px; background-color: #4b5563;
+            border-radius: 9999px; position: relative; cursor: pointer; transition: background-color 0.3s;
+        }
+        .theme-switcher:before {
+            content: ''; position: absolute; width: 22px; height: 22px; border-radius: 50%;
+            background-color: white; top: 3px; left: 3px; transition: transform 0.3s;
+        }
+        .theme-switcher:checked { background-color: #3b82f6; }
+        .theme-switcher:checked:before { transform: translateX(22px); }
+        .btn-restart {
+             background-color: var(--btn-restart-bg);
+             color: var(--btn-restart-text);
+        }
+        .rules-illustration {
+            padding: 0.5rem; /* Prevents glow clipping */
+        }
+        .menu-btn {
+            transition-property: background-color, border-color, color, transform, box-shadow;
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+            transition-duration: 200ms;
+        }
+    </style>
+</head>
+<body oncontextmenu="return false;">
+
+    <!-- Main Menu Screen -->
+    <div id="main-menu" class="screen active justify-center p-4 space-y-6">
+        <div class="text-center">
+            <h1 class="font-black tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-fuchsia-500" style="font-size: clamp(2.5rem, 12vw, 4rem);">Матрица</h1>
+            <h2 class="font-black tracking-tighter" style="color: var(--text-primary); font-size: clamp(2.5rem, 12vw, 4rem);">Математики</h2>
+        </div>
+        
+        <div id="difficulty-selection" class="grid grid-cols-2 gap-3 w-full max-w-sm">
+            <!-- Buttons are generated by JS -->
+        </div>
+
+        <div class="flex flex-col space-y-3 w-full max-w-sm">
+             <button id="stats-button" class="w-full font-bold py-3 px-4 rounded-xl text-lg shadow-md transform hover:scale-105 menu-btn" style="background-color: var(--bg-tertiary); color: var(--text-primary);">
+                Статистика
+            </button>
+            <div class="flex items-center justify-between p-3 rounded-xl menu-btn" style="background-color: var(--bg-tertiary);">
+                <span class="font-medium" style="color: var(--text-secondary);">Светлая тема</span>
+                <input type="checkbox" id="theme-switch" class="theme-switcher">
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen justify-between p-2 sm:p-4">
+        <!-- Header -->
+        <header class="w-full flex items-center justify-between p-2 flex-shrink-0">
+            <div class="text-left">
+                <div class="text-sm" style="color: var(--text-secondary);">УРОВЕНЬ</div>
+                <div id="level-display" class="text-2xl font-bold">1</div>
+            </div>
+            <button id="pause-button" class="p-3 rounded-full transition" style="background-color: var(--bg-secondary);">
+                <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--text-primary);"><path d="M6 4h2v16H6zM16 4h2v16h-2z"/></svg>
+            </button>
+            <div class="text-right">
+                <div class="text-sm" style="color: var(--text-secondary);">ЦЕЛЬ</div>
+                <div id="target-display" class="text-2xl font-bold" style="color: var(--text-accent);">25</div>
+            </div>
+        </header>
+
+        <!-- Game Grid -->
+        <main id="grid-container" class="relative w-full max-w-md aspect-square flex items-center justify-center my-2">
+            <div id="path-container"></div>
+            <div id="grid" class="grid gap-2 p-2 w-full h-full"></div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="w-full flex items-center justify-between p-2 flex-shrink-0">
+            <button id="hint-button" class="flex items-center justify-center w-16 h-16 rounded-full bg-yellow-500 hover:bg-yellow-600 transition text-4xl">
+                💡
+            </button>
+            <div class="text-center flex-grow">
+                <div class="text-sm" style="color: var(--text-secondary);">ТЕКУЩЕЕ ЗНАЧЕНИЕ</div>
+                <div id="current-value-display" class="text-3xl font-bold transition-colors duration-300">0</div>
+            </div>
+            <div class="w-16"></div> <!-- Spacer -->
+        </footer>
+    </div>
+    
+    <!-- Modals -->
+    <div id="pause-modal" class="screen modal-backdrop justify-center p-8">
+        <div class="rounded-2xl p-8 shadow-2xl w-full max-w-xs text-center space-y-6" style="background-color: var(--bg-secondary);">
+            <h3 class="text-3xl font-bold">Пауза</h3>
+            <div class="flex flex-col space-y-4">
+                <button id="resume-button" class="w-full text-white font-bold py-3 px-4 rounded-xl text-lg transform hover:scale-105 transition-all duration-300" style="background-color: var(--bg-interactive);">Продолжить</button>
+                <button id="restart-button" class="w-full font-bold py-3 px-4 rounded-xl text-lg transform hover:scale-105 transition-all duration-300 btn-restart">Заново</button>
+                <button id="main-menu-button-pause" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl text-lg transform hover:scale-105 transition-all duration-300">Главное меню</button>
+            </div>
+        </div>
+    </div>
+    <div id="stats-screen" class="screen p-4 sm:p-8">
+        <div class="w-full max-w-md h-full flex flex-col">
+            <div class="relative text-center py-4 flex-shrink-0">
+                 <button id="stats-back-button" class="absolute top-1/2 left-0 -translate-y-1/2 p-2 rounded-full transition" style="background-color: var(--bg-tertiary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                </button>
+                <h3 class="text-3xl font-black" style="color: var(--text-primary);">Статистика</h3>
+            </div>
+            <div class="flex-grow mt-4 overflow-y-auto">
+                <table class="w-full text-left border-collapse" style="color: var(--text-primary);">
+                    <thead>
+                        <tr>
+                            <th class="p-3 text-lg font-bold">Режим</th>
+                            <th class="p-3 text-lg font-bold text-right">Уровней пройдено</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stats-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div id="rules-screen" class="screen p-4 sm:p-8">
+        <div class="w-full max-w-md h-full flex flex-col">
+            <div class="relative text-center py-4 flex-shrink-0">
+                <button id="rules-back-button" class="absolute top-1/2 left-0 -translate-y-1/2 p-2 rounded-full transition" style="background-color: var(--bg-tertiary);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                </button>
+                <h3 class="text-3xl font-black" style="color: var(--text-primary);">Правила</h3>
+            </div>
+            <div class="flex-grow mt-4 space-y-6 text-left overflow-y-auto" style="color: var(--text-primary);">
+                <p class="text-lg leading-relaxed">Соединяйте <strong style="color: var(--text-accent);">числа</strong> и <strong style="color: var(--text-accent);">операторы</strong>, чтобы получить <strong style="color: var(--text-accent);">целевое значение</strong>.</p>
+                <div class="rules-illustration">
+                    <p class="mb-2 text-center w-full">Пример: получить <strong>15</strong></p>
+                    <div id="rules-grid" class="grid grid-cols-3 gap-2"></div>
+                </div>
+                 <p class="pt-4">Если застряли, нажмите кнопку подсказки 💡.</p>
+            </div>
+        </div>
+    </div>
+    <div id="level-complete-modal" class="screen modal-backdrop justify-center p-8">
+        <div class="rounded-2xl p-8 shadow-2xl w-full max-w-xs text-center space-y-6 transform scale-0 transition-transform duration-500 ease-out" id="level-complete-content" style="background-color: var(--bg-secondary);">
+            <div class="relative">
+                <div class="absolute -top-16 left-1/2 -translate-x-1/2 w-24 h-24 bg-green-500 rounded-full flex items-center justify-center shadow-lg shadow-green-500/50">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+            </div>
+            <h3 class="text-3xl font-bold pt-8">Отлично!</h3>
+            <p style="color: var(--text-secondary);">Уровень <span id="completed-level-num"></span> пройден!</p>
+            <button id="next-level-button" class="w-full text-white font-bold py-3 px-4 rounded-xl text-lg transform hover:scale-105 transition-all duration-300" style="background-color: var(--bg-interactive);">Следующий уровень</button>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- VK BRIDGE ---
+        vkBridge.send('VKWebAppInit');
+
+        // --- DOM Elements ---
+        const screens = {
+            mainMenu: document.getElementById('main-menu'),
+            game: document.getElementById('game-screen'),
+            pause: document.getElementById('pause-modal'),
+            stats: document.getElementById('stats-screen'),
+            rules: document.getElementById('rules-screen'),
+            levelComplete: document.getElementById('level-complete-modal'),
+        };
+        const buttons = {
+            stats: document.getElementById('stats-button'),
+            statsBack: document.getElementById('stats-back-button'),
+            rulesBack: document.getElementById('rules-back-button'),
+            pause: document.getElementById('pause-button'),
+            resume: document.getElementById('resume-button'),
+            restart: document.getElementById('restart-button'),
+            mainMenuPause: document.getElementById('main-menu-button-pause'),
+            nextLevel: document.getElementById('next-level-button'),
+            hint: document.getElementById('hint-button'),
+        };
+        const displays = {
+            level: document.getElementById('level-display'),
+            target: document.getElementById('target-display'),
+            currentValue: document.getElementById('current-value-display'),
+            completedLevelNum: document.getElementById('completed-level-num'),
+        };
+        const grid = document.getElementById('grid');
+        const gridContainer = document.getElementById('grid-container');
+        const pathContainer = document.getElementById('path-container');
+        const levelCompleteContent = document.getElementById('level-complete-content');
+        const difficultySelectionContainer = document.getElementById('difficulty-selection');
+        const themeSwitch = document.getElementById('theme-switch');
+        
+        // --- Game Config ---
+        const difficulties = {
+            '4x4': { size: 4, unlock: 0, numRange: 10, targetRange: 30 },
+            '5x5': { size: 5, unlock: 25, numRange: 20, targetRange: 50 },
+            '6x6': { size: 6, unlock: 25, numRange: 30, targetRange: 100 },
+            '7x7': { size: 7, unlock: 25, numRange: 40, targetRange: 250 },
+            '8x8': { size: 8, unlock: 25, numRange: 50, targetRange: 500 },
+        };
+        const difficultyOrder = ['4x4', '5x5', '6x6', '7x7', '8x8'];
+        const SAVE_KEY = 'mathMatrixStats_v6';
+        const AD_FREQUENCY = 3;
+
+        // --- Game State ---
+        let gameState = {
+            difficulty: '4x4',
+            gridSize: 4,
+            targetValue: 0,
+            currentValue: 0,
+            gridData: [],
+            solutionPath: [],
+            isDrawing: false,
+            currentPath: [],
+            isPaused: false,
+            hintStep: 0,
+        };
+        let rulesAnimationTimer = null;
+        let isVK = false;
+
+        // --- Stats State ---
+        let gameStats = {};
+        let levelsSinceAd = 0;
+
+        // --- Utility Functions ---
+        const showScreen = (screenId) => {
+            Object.values(screens).forEach(s => s.classList.remove('active'));
+            if (screens[screenId]) screens[screenId].classList.add('active');
+            
+            if (screenId !== 'rules' && rulesAnimationTimer) {
+                clearTimeout(rulesAnimationTimer);
+                rulesAnimationTimer = null;
+            }
+        };
+
+        const saveStats = async () => {
+            const dataToSave = JSON.stringify(gameStats);
+            if (isVK) {
+                try {
+                    await vkBridge.send('VKWebAppStorageSet', { key: SAVE_KEY, value: dataToSave });
+                } catch (error) {
+                    console.error("VK Save Failed:", error);
+                }
+            } else {
+                localStorage.setItem(SAVE_KEY, dataToSave);
+            }
+        };
+
+        const loadStats = async () => {
+            let loadedData = null;
+            try {
+                await vkBridge.send('VKWebAppGetUserInfo');
+                isVK = true;
+                const vkData = await vkBridge.send('VKWebAppStorageGet', { keys: [SAVE_KEY] });
+                if (vkData.keys[0].value) {
+                    loadedData = vkData.keys[0].value;
+                }
+            } catch (error) {
+                isVK = false;
+                console.log("Not in VK, using localStorage.");
+                loadedData = localStorage.getItem(SAVE_KEY);
+            }
+
+            if (loadedData) {
+                gameStats = JSON.parse(loadedData);
+            }
+            
+            difficultyOrder.forEach(key => {
+                if (!gameStats[key]) {
+                    gameStats[key] = { levelsCompleted: 0 };
+                }
+            });
+             if (gameStats.levelsSinceAd === undefined) {
+                gameStats.levelsSinceAd = 0;
+            }
+            levelsSinceAd = gameStats.levelsSinceAd;
+        };
+
+        // --- Theme Management ---
+        const applyTheme = (isLight) => {
+            document.documentElement.classList.toggle('light', isLight);
+            themeSwitch.checked = isLight;
+        };
+
+        const toggleTheme = () => {
+            const isLight = themeSwitch.checked;
+            applyTheme(isLight);
+            localStorage.setItem('mathMatrixTheme', isLight ? 'light' : 'dark');
+        };
+
+        // --- Main Menu ---
+        const updateMainMenu = () => {
+            difficultySelectionContainer.innerHTML = '';
+            let previousDifficultyKey = null;
+
+            const allButtons = [...difficultyOrder, 'rules'];
+
+            allButtons.forEach(key => {
+                const button = document.createElement('button');
+                button.classList.add('menu-btn');
+
+                if(key === 'rules') {
+                    button.id = 'rules-button';
+                    button.className += ' p-4 rounded-xl font-bold text-lg sm:text-xl shadow-lg transform hover:scale-105';
+                    button.style.backgroundColor = 'var(--bg-tertiary)';
+                    button.style.color = 'var(--text-primary)';
+                    button.innerHTML = 'Правила';
+                    difficultySelectionContainer.appendChild(button);
+                    return;
+                }
+
+                const config = difficulties[key];
+                button.dataset.difficulty = key;
+                
+                const isUnlocked = previousDifficultyKey === null || gameStats[previousDifficultyKey].levelsCompleted >= config.unlock;
+                
+                if(isUnlocked) {
+                    button.className += ' p-4 rounded-xl text-white font-bold text-lg sm:text-xl shadow-lg transform hover:scale-105';
+                    button.style.backgroundColor = 'var(--bg-interactive)';
+                    button.innerHTML = key;
+                } else {
+                    button.disabled = true;
+                    button.className += ' p-4 rounded-xl font-bold text-lg sm:text-xl shadow-md';
+                    button.style.backgroundColor = 'var(--bg-tertiary)';
+                    button.style.color = 'var(--text-secondary)';
+                    const completed = gameStats[previousDifficultyKey].levelsCompleted;
+                    const needed = config.unlock;
+                    button.innerHTML = `
+                        <div class="flex flex-col items-center justify-center">
+                            <span>${key}</span>
+                            <div class="flex items-center text-xs font-medium mt-1">
+                                <svg class="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd"></path></svg>
+                                <span>${completed}/${needed}</span>
+                            </div>
+                        </div>`;
+                }
+                difficultySelectionContainer.appendChild(button);
+                previousDifficultyKey = key;
+            });
+        };
+        
+        // --- Stats Screen ---
+        const updateStatsScreen = () => {
+            const tableBody = document.getElementById('stats-table-body');
+            tableBody.innerHTML = '';
+            difficultyOrder.forEach(key => {
+                const stats = gameStats[key];
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-200/10';
+                row.innerHTML = `
+                    <td class="p-3 font-semibold">${key}</td>
+                    <td class="p-3 text-right font-mono text-xl" style="color: var(--text-accent);">${stats.levelsCompleted}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        };
+        
+        // --- Rules Screen ---
+        function showRulesScreen() {
+            showScreen('rules');
+            const rulesGrid = document.getElementById('rules-grid');
+            rulesGrid.innerHTML = '';
+            const example = [
+                {val: 5, type: 'number'}, {val: '×', type: 'operator'}, {val: 7, type: 'number'},
+                {val: '+', type: 'operator'}, {val: 4, type: 'number'}, {val: '−', type: 'operator'},
+                {val: 9, type: 'number'}, {val: '÷', type: 'operator'}, {val: 5, type: 'number'},
+            ];
+            const path = [0, 1, 4, 5, 8]; // 5 * 4 - 5 = 15
+            
+            example.forEach((cell, index) => {
+                const tile = document.createElement('div');
+                tile.className = 'tile w-full h-full flex items-center justify-center rounded-lg';
+                if(cell.type === 'operator') {
+                    tile.classList.add('operator');
+                    tile.innerHTML = cell.val === '*' ? '&times;' : cell.val;
+                } else {
+                    tile.textContent = cell.val;
+                }
+                tile.dataset.index = index;
+                rulesGrid.appendChild(tile);
+            });
+
+            let step = 0;
+            const animateRulesHint = () => {
+                const tiles = rulesGrid.querySelectorAll('.tile');
+                if (step >= path.length) {
+                    rulesAnimationTimer = setTimeout(() => {
+                        tiles.forEach(t => t.classList.remove('hint-outline'));
+                        step = 0;
+                        rulesAnimationTimer = setTimeout(animateRulesHint, 500);
+                    }, 2000);
+                    return;
+                }
+                const tileIndex = path[step];
+                const tile = rulesGrid.querySelector(`[data-index='${tileIndex}']`);
+                if(tile) tile.classList.add('hint-outline');
+                step++;
+                rulesAnimationTimer = setTimeout(animateRulesHint, 400);
+            };
+            if(rulesAnimationTimer) clearTimeout(rulesAnimationTimer);
+            animateRulesHint();
+        }
+
+        // --- Level Generation ---
+        const generateLevel = () => {
+            const config = difficulties[gameState.difficulty];
+            const size = config.size;
+            gameState.gridSize = size;
+            let gridData, solutionPath, targetValue;
+            
+            let attempts = 0;
+            while(attempts < 50) {
+                const result = buildGuaranteedLevel(size, config.numRange, config.targetRange);
+                if(result) {
+                    ({ gridData, solutionPath, targetValue } = result);
+                    break;
+                }
+                attempts++;
+            }
+
+            if(!gridData) {
+                alert("Не удалось сгенерировать уровень. Пожалуйста, попробуйте снова.");
+                showScreen('mainMenu');
+                return;
+            }
+
+            gameState.gridData = gridData;
+            gameState.solutionPath = solutionPath;
+            gameState.targetValue = targetValue;
+        };
+
+        function buildGuaranteedLevel(size, numRange, targetRange) {
+            let gridData = Array(size).fill(null).map(() => Array(size).fill(null));
+            const pathLength = Math.floor(size / 2) + Math.floor(Math.random() * (size / 2));
+            const operators = ['+', '-', '*', '/'];
+
+            let numberCells = [], operatorCells = [];
+            for(let r = 0; r < size; r++) {
+                for(let c = 0; c < size; c++) {
+                    if((r + c) % 2 === 0) numberCells.push({r, c});
+                    else operatorCells.push({r, c});
+                }
+            }
+
+            let pathCoords = [];
+            let currentVal;
+            let solutionPath = [];
+
+            let startCell = numberCells.splice(Math.floor(Math.random() * numberCells.length), 1)[0];
+            pathCoords.push(startCell);
+            
+            let startValue = Math.floor(Math.random() * numRange) + 1;
+            currentVal = startValue;
+            solutionPath.push({ type: 'number', value: startValue, row: startCell.r, col: startCell.c });
+
+            for (let i = 0; i < pathLength; i++) {
+                let possibleOps = findAdjacent(pathCoords[pathCoords.length-1], operatorCells);
+                if(possibleOps.length === 0) break;
+                let opCell = possibleOps.splice(Math.floor(Math.random() * possibleOps.length), 1)[0];
+                operatorCells = operatorCells.filter(c => c.r !== opCell.r || c.c !== opCell.c);
+                pathCoords.push(opCell);
+                
+                let possibleNums = findAdjacent(opCell, numberCells);
+                if(possibleNums.length === 0) break;
+                let numCell = possibleNums.splice(Math.floor(Math.random() * possibleNums.length), 1)[0];
+                numberCells = numberCells.filter(c => c.r !== numCell.r || c.c !== numCell.c);
+                pathCoords.push(numCell);
+
+                let op, num;
+                let calculationOk = false;
+                let opAttempts = 0;
+                while(!calculationOk && opAttempts < 20) {
+                    opAttempts++;
+                    op = operators[Math.floor(Math.random() * operators.length)];
+                    num = Math.floor(Math.random() * numRange) + 1;
+                    
+                    let tempVal = currentVal;
+                    let nextVal = eval(`${tempVal} ${op} ${num}`);
+
+                    if (op === '/') {
+                        if (tempVal % num !== 0) continue;
+                    } else if (op === '-') {
+                        if (nextVal <= 0) continue;
+                    }
+                    if (nextVal > targetRange) continue;
+                    
+                    calculationOk = true;
+                    currentVal = nextVal;
+                }
+                if (!calculationOk) return null;
+
+                solutionPath.push({ type: 'operator', value: op, row: opCell.r, col: opCell.c });
+                solutionPath.push({ type: 'number', value: num, row: numCell.r, col: numCell.c });
+            }
+
+            if(solutionPath.length < 3) return null;
+
+            solutionPath.forEach(p => {
+                gridData[p.row][p.col] = { type: p.type, value: p.value, row: p.row, col: p.col };
+            });
+
+            numberCells.forEach(cell => {
+                gridData[cell.r][cell.c] = { type: 'number', value: Math.floor(Math.random() * numRange) + 1, row: cell.r, col: cell.c };
+            });
+            operatorCells.forEach(cell => {
+                gridData[cell.r][cell.c] = { type: 'operator', value: operators[Math.floor(Math.random() * 3)], row: cell.r, col: cell.c };
+            });
+
+            return { gridData, solutionPath, targetValue: currentVal };
+        }
+
+        function findAdjacent({r, c}, cellList) {
+            return cellList.filter(cell => Math.abs(cell.r - r) + Math.abs(cell.c - c) === 1);
+        }
+
+        // --- Drawing Functions ---
+        const drawGrid = () => {
+            grid.innerHTML = '';
+            grid.style.gridTemplateColumns = `repeat(${gameState.gridSize}, 1fr)`;
+            grid.style.gridTemplateRows = `repeat(${gameState.gridSize}, 1fr)`;
+
+            gameState.gridData.forEach((row, r) => {
+                row.forEach((cell, c) => {
+                    const tile = document.createElement('div');
+                    tile.dataset.row = r;
+                    tile.dataset.col = c;
+                    tile.dataset.value = cell.value;
+                    tile.dataset.type = cell.type;
+                    
+                    let tileClasses = 'tile w-full h-full flex items-center justify-center rounded-lg font-bold cursor-pointer';
+                    if (cell.type === 'operator') {
+                        tileClasses += ' operator';
+                        tile.innerHTML = cell.value === '*' ? '&times;' : cell.value.replace('-', '−');
+                    } else {
+                        tile.textContent = cell.value;
+                    }
+                    tile.className = tileClasses;
+                    grid.appendChild(tile);
+                });
+            });
+        };
+
+        const updateDisplay = () => {
+            displays.level.textContent = gameStats[gameState.difficulty].levelsCompleted + 1;
+            displays.target.textContent = gameState.targetValue;
+            displays.currentValue.textContent = gameState.currentValue;
+            
+            const currentValueDisplay = displays.currentValue;
+            if (gameState.currentValue === gameState.targetValue && gameState.currentPath.length >= 3) {
+                currentValueDisplay.style.color = '#4ade80';
+            } else {
+                currentValueDisplay.style.color = 'var(--text-primary)';
+            }
+        };
+
+        const drawPath = () => {
+            pathContainer.innerHTML = '';
+            if (gameState.currentPath.length < 2) return;
+            for (let i = 0; i < gameState.currentPath.length - 1; i++) {
+                const startNode = document.querySelector(`[data-row='${gameState.currentPath[i].row}'][data-col='${gameState.currentPath[i].col}']`);
+                const endNode = document.querySelector(`[data-row='${gameState.currentPath[i+1].row}'][data-col='${gameState.currentPath[i+1].col}']`);
+                const startRect = startNode.getBoundingClientRect();
+                const endRect = endNode.getBoundingClientRect();
+                const containerRect = gridContainer.getBoundingClientRect();
+                const startX = startRect.left + startRect.width / 2 - containerRect.left;
+                const startY = startRect.top + startRect.height / 2 - containerRect.top;
+                const endX = endRect.left + endRect.width / 2 - containerRect.left;
+                const endY = endRect.top + endRect.height / 2 - containerRect.top;
+                const angle = Math.atan2(endY - startY, endX - startX) * 180 / Math.PI;
+                const length = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+                const line = document.createElement('div');
+                line.className = 'path-line';
+                line.style.width = `${length}px`;
+                line.style.left = `${startX}px`;
+                line.style.top = `${startY}px`;
+                line.style.transform = `rotate(${angle}deg)`;
+                pathContainer.appendChild(line);
+            }
+        };
+        
+        // --- Game Logic ---
+        const startNewGame = (difficulty) => {
+            gameState.difficulty = difficulty;
+            startLevel();
+            showScreen('game');
+        };
+
+        const startLevel = () => {
+            resetPath();
+            generateLevel();
+            drawGrid();
+            updateDisplay();
+        };
+
+        const levelComplete = () => {
+            gameStats[gameState.difficulty].levelsCompleted++;
+            levelsSinceAd++;
+            gameStats.levelsSinceAd = levelsSinceAd;
+            saveStats();
+            updateMainMenu();
+            
+            if (isVK && levelsSinceAd >= AD_FREQUENCY) {
+                vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
+                    .then(() => levelsSinceAd = 0)
+                    .catch(e => console.log("Interstitial ad error", e))
+                    .finally(() => {
+                        gameStats.levelsSinceAd = levelsSinceAd;
+                        saveStats();
+                    });
+            }
+            
+            displays.completedLevelNum.textContent = gameStats[gameState.difficulty].levelsCompleted;
+            showScreen('levelComplete');
+            levelCompleteContent.classList.remove('scale-0');
+            levelCompleteContent.classList.add('scale-100');
+        };
+        
+        const goToNextLevel = () => {
+             levelCompleteContent.classList.remove('scale-100');
+             levelCompleteContent.classList.add('scale-0');
+             setTimeout(() => {
+                showScreen('game');
+                startLevel();
+             }, 300);
+        }
+
+        const resetPath = () => {
+            gameState.isDrawing = false;
+            // gameState.hintStep is NOT reset here intentionally
+            gameState.currentPath = [];
+            gameState.currentValue = 0;
+            document.querySelectorAll('.tile.selected').forEach(t => t.classList.remove('selected'));
+            document.querySelectorAll('.tile.hint-outline').forEach(t => t.classList.remove('hint-outline'));
+            pathContainer.innerHTML = '';
+            updateDisplay();
+        };
+
+        const handleInteractionStart = (e) => {
+            if (gameState.isPaused) return;
+            const tile = e.target.closest('.tile');
+            if (tile && tile.dataset.type === 'number') {
+                e.preventDefault();
+                resetPath();
+                gameState.hintStep = 0; // Reset hint progress on new attempt
+                gameState.isDrawing = true;
+                const row = parseInt(tile.dataset.row);
+                const col = parseInt(tile.dataset.col);
+                const value = parseInt(tile.dataset.value);
+                
+                gameState.currentPath.push({row, col, value, type: 'number'});
+                gameState.currentValue = value;
+                
+                tile.classList.add('selected');
+                updateDisplay();
+                drawPath();
+            }
+        };
+
+        const handleInteractionMove = (e) => {
+            if (!gameState.isDrawing || gameState.isPaused) return;
+            e.preventDefault();
+            
+            const touch = e.touches ? e.touches[0] : e;
+            const element = document.elementFromPoint(touch.clientX, touch.clientY);
+            const tile = element ? element.closest('.tile') : null;
+
+            if (tile) {
+                const row = parseInt(tile.dataset.row);
+                const col = parseInt(tile.dataset.col);
+                const value = tile.dataset.value;
+                const type = tile.dataset.type;
+
+                const lastTile = gameState.currentPath[gameState.currentPath.length - 1];
+                const isAdjacent = Math.abs(lastTile.row - row) + Math.abs(lastTile.col - col) === 1;
+                const isInPath = gameState.currentPath.some(p => p.row === row && p.col === col);
+
+                if (isAdjacent && !isInPath && type !== lastTile.type) {
+                    gameState.currentPath.push({row, col, value, type});
+                    tile.classList.add('selected');
+                    
+                    if (type === 'number') {
+                        const operator = gameState.currentPath[gameState.currentPath.length - 2].value;
+                        gameState.currentValue = eval(`${gameState.currentValue} ${operator} ${value}`);
+                    }
+                    updateDisplay();
+                    drawPath();
+                }
+            }
+        };
+
+        const handleInteractionEnd = (e) => {
+            if (!gameState.isDrawing || gameState.isPaused) return;
+            e.preventDefault();
+            gameState.isDrawing = false;
+
+            if (gameState.currentValue === gameState.targetValue && gameState.currentPath.length >= 3) {
+                setTimeout(levelComplete, 200);
+            } else {
+                displays.currentValue.style.color = '#f87171';
+                setTimeout(resetPath, 800);
+            }
+        };
+
+
+        const handleHintClick = () => {
+            if (!isVK) {
+                grantHint();
+                return;
+            }
+            vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'reward' })
+                .then(data => {
+                    if (data.result) {
+                        grantHint();
+                    }
+                })
+                .catch(error => console.log("Reward ad error", error));
+        };
+
+        const grantHint = () => {
+            if (gameState.isDrawing) return;
+            
+            document.querySelectorAll('.tile.hint-outline').forEach(t => t.classList.remove('hint-outline'));
+
+            gameState.hintStep++;
+            const tilesToShow = gameState.hintStep * 2;
+
+            if (tilesToShow > gameState.solutionPath.length) {
+                gameState.hintStep = 1;
+            }
+            
+            const finalIndex = Math.min(gameState.hintStep * 2, gameState.solutionPath.length);
+
+            for(let i=0; i < finalIndex; i++) {
+                const delay = i * 150; // Stagger animation
+                setTimeout(() => {
+                    const tileInfo = gameState.solutionPath[i];
+                    const tileElement = document.querySelector(`[data-row='${tileInfo.row}'][data-col='${tileInfo.col}']`);
+                    if (tileElement) {
+                       tileElement.classList.add('hint-outline');
+                    }
+                }, delay);
+            }
+        };
+
+        // --- Event Listeners ---
+        difficultySelectionContainer.addEventListener('click', (e) => {
+            const button = e.target.closest('button');
+            if (button && !button.disabled) {
+                if(button.id === 'rules-button') {
+                    showRulesScreen();
+                } else {
+                    startNewGame(button.dataset.difficulty);
+                }
+            }
+        });
+
+        buttons.stats.addEventListener('click', () => { updateStatsScreen(); showScreen('stats'); });
+        buttons.statsBack.addEventListener('click', () => showScreen('mainMenu'));
+        buttons.rulesBack.addEventListener('click', () => showScreen('mainMenu'));
+        themeSwitch.addEventListener('change', toggleTheme);
+        buttons.pause.addEventListener('click', () => { gameState.isPaused = true; showScreen('pause'); });
+        buttons.resume.addEventListener('click', () => { gameState.isPaused = false; showScreen('game'); });
+        buttons.restart.addEventListener('click', () => { gameState.isPaused = false; showScreen('game'); startLevel(); });
+        buttons.mainMenuPause.addEventListener('click', () => { gameState.isPaused = false; showScreen('mainMenu'); });
+        buttons.nextLevel.addEventListener('click', goToNextLevel);
+        buttons.hint.addEventListener('click', handleHintClick);
+
+        gridContainer.addEventListener('mousedown', handleInteractionStart);
+        gridContainer.addEventListener('mousemove', handleInteractionMove);
+        window.addEventListener('mouseup', handleInteractionEnd);
+        gridContainer.addEventListener('touchstart', handleInteractionStart, { passive: false });
+        gridContainer.addEventListener('touchmove', handleInteractionMove, { passive: false });
+        window.addEventListener('touchend', handleInteractionEnd);
+
+        // --- Initialization ---
+        async function init() {
+            const savedTheme = localStorage.getItem('mathMatrixTheme');
+            applyTheme(savedTheme === 'light');
+            await loadStats();
+            updateMainMenu();
+            showScreen('mainMenu');
+            if (isVK) {
+                vkBridge.send('VKWebAppShowBannerAd', { banner_location: 'bottom' })
+                    .catch(e => console.log("Banner ad error", e));
+            }
+        }
+
+        init();
+    });
+    </script>
+</body>
+</html>
+
