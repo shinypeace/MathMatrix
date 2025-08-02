@@ -158,6 +158,9 @@
             transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
             transition-duration: 200ms;
         }
+        .btn-interactive {
+            background-color: var(--bg-interactive);
+        }
     </style>
 </head>
 <body oncontextmenu="return false;">
@@ -225,7 +228,7 @@
         <div class="rounded-2xl p-8 shadow-2xl w-full max-w-xs text-center space-y-6" style="background-color: var(--bg-secondary);">
             <h3 class="text-3xl font-bold">Пауза</h3>
             <div class="flex flex-col space-y-4">
-                <button id="resume-button" class="w-full text-white font-bold py-3 px-4 rounded-xl text-lg transform hover:scale-105 transition-all duration-300" style="background-color: var(--bg-interactive);">Продолжить</button>
+                <button id="resume-button" class="w-full text-white font-bold py-3 px-4 rounded-xl text-lg transform hover:scale-105 transition-all duration-300 btn-interactive">Продолжить</button>
                 <button id="restart-button" class="w-full font-bold py-3 px-4 rounded-xl text-lg transform hover:scale-105 transition-all duration-300 btn-restart">Заново</button>
                 <button id="main-menu-button-pause" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded-xl text-lg transform hover:scale-105 transition-all duration-300">Главное меню</button>
             </div>
@@ -265,7 +268,7 @@
                 <div class="rules-illustration">
                     <div class="relative">
                         <p class="mb-2 text-center w-full">Пример: получить <strong>15</strong></p>
-                        <div id="rules-path-container" class="absolute top-0 left-0 w-full h-full"></div>
+                        <div id="rules-path-container" class="absolute top-0 left-0 w-full h-full pointer-events-none"></div>
                         <div id="rules-grid" class="grid grid-cols-3 gap-2" style="width: 240px; height: 240px;"></div>
                     </div>
                 </div>
@@ -282,7 +285,7 @@
             </div>
             <h3 class="text-3xl font-bold pt-8">Отлично!</h3>
             <p style="color: var(--text-secondary);">Уровень <span id="completed-level-num"></span> пройден!</p>
-            <button id="next-level-button" class="w-full text-white font-bold py-3 px-4 rounded-xl text-lg transform hover:scale-105 transition-all duration-300" style="background-color: var(--bg-interactive);">Следующий уровень</button>
+            <button id="next-level-button" class="w-full text-white font-bold py-3 px-4 rounded-xl text-lg transform hover:scale-105 transition-all duration-300 btn-interactive">Следующий уровень</button>
         </div>
     </div>
 
@@ -334,7 +337,7 @@
         };
         const difficultyOrder = ['4x4', '5x5', '6x6', '7x7', '8x8'];
         const SAVE_KEY = 'mathMatrixStats_v8';
-        const AD_FREQUENCY = 3;
+        const AD_FREQUENCY = 5;
 
         // --- Game State ---
         let gameState = {
@@ -349,7 +352,6 @@
             isPaused: false,
             hintStep: 0,
         };
-        let rulesAnimationTimer = null;
         let isVK = false;
 
         // --- Stats State ---
@@ -360,11 +362,6 @@
         const showScreen = (screenId) => {
             Object.values(screens).forEach(s => s.classList.remove('active'));
             if (screens[screenId]) screens[screenId].classList.add('active');
-            
-            if (screenId !== 'rules' && rulesAnimationTimer) {
-                clearTimeout(rulesAnimationTimer);
-                rulesAnimationTimer = null;
-            }
         };
 
         const saveStats = async () => {
@@ -449,8 +446,7 @@
                 const isUnlocked = previousDifficultyKey === null || gameStats[previousDifficultyKey].levelsCompleted >= config.unlock;
                 
                 if(isUnlocked) {
-                    button.className += ' p-4 rounded-xl text-white font-bold text-lg sm:text-xl shadow-lg transform hover:scale-105';
-                    button.style.backgroundColor = 'var(--bg-interactive)';
+                    button.className += ' p-4 rounded-xl text-white font-bold text-lg sm:text-xl shadow-lg transform hover:scale-105 btn-interactive';
                     button.innerHTML = key;
                 } else {
                     button.disabled = true;
@@ -511,7 +507,7 @@
                 
                 if(cell.type === 'operator') {
                     tile.classList.add('operator');
-                    tile.innerHTML = cell.val === '*' ? '&times;' : cell.val;
+                    tile.innerHTML = cell.val === '*' ? '&times;' : cell.val === '/' ? '÷' : cell.val;
                     switch(cell.val) {
                         case '+': tile.classList.add('op-plus'); break;
                         case '−': tile.classList.add('op-minus'); break;
@@ -532,26 +528,30 @@
             for (let i = 0; i < path.length - 1; i++) {
                 const startNode = rulesGrid.querySelector(`[data-index='${path[i]}']`);
                 const endNode = rulesGrid.querySelector(`[data-index='${path[i+1]}']`);
-                const startRect = startNode.getBoundingClientRect();
-                const endRect = endNode.getBoundingClientRect();
-                const containerRect = rulesPathContainer.getBoundingClientRect();
-
-                const startX = startRect.left + startRect.width / 2 - containerRect.left;
-                const startY = startRect.top + startRect.height / 2 - containerRect.top;
-                const endX = endRect.left + endRect.width / 2 - containerRect.left;
-                const endY = endRect.top + endRect.height / 2 - containerRect.top;
-
-                const angle = Math.atan2(endY - startY, endX - startX) * 180 / Math.PI;
-                const length = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
-
-                const line = document.createElement('div');
-                line.className = 'path-line';
-                line.style.width = `${length}px`;
-                line.style.left = `${startX}px`;
-                line.style.top = `${startY}px`;
-                line.style.transform = `rotate(${angle}deg)`;
-                rulesPathContainer.appendChild(line);
+                drawStaticLine(startNode, endNode, rulesPathContainer);
             }
+        }
+        
+        function drawStaticLine(startNode, endNode, container) {
+            const startRect = startNode.getBoundingClientRect();
+            const endRect = endNode.getBoundingClientRect();
+            const containerRect = container.getBoundingClientRect();
+
+            const startX = startRect.left + startRect.width / 2 - containerRect.left;
+            const startY = startRect.top + startRect.height / 2 - containerRect.top;
+            const endX = endRect.left + endRect.width / 2 - containerRect.left;
+            const endY = endRect.top + endRect.height / 2 - containerRect.top;
+
+            const angle = Math.atan2(endY - startY, endX - startX) * 180 / Math.PI;
+            const length = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+
+            const line = document.createElement('div');
+            line.className = 'path-line';
+            line.style.width = `${length}px`;
+            line.style.left = `${startX}px`;
+            line.style.top = `${startY}px`;
+            line.style.transform = `rotate(${angle}deg)`;
+            container.appendChild(line);
         }
 
         // --- Level Generation ---
@@ -562,7 +562,7 @@
             let gridData, solutionPath, targetValue;
             
             let attempts = 0;
-            while(attempts < 100) { // Increased attempts for robustness
+            while(attempts < 100) {
                 const result = buildGuaranteedLevel(size, config.numRange, config.targetRange);
                 if(result) {
                     ({ gridData, solutionPath, targetValue } = result);
@@ -628,7 +628,7 @@
                     num = Math.floor(Math.random() * numRange) + 1;
                     
                     let tempVal = currentVal;
-                    let nextVal = eval(`${tempVal} ${op} ${num}`);
+                    let nextVal = eval(`${tempVal} ${op.replace('÷','/')} ${num}`);
 
                     if (op === '/') {
                         if (tempVal % num !== 0) continue;
@@ -638,7 +638,7 @@
                     if (nextVal > targetRange || nextVal < 1) continue;
                     
                     calculationOk = true;
-                    currentVal = nextVal;
+                    currentVal = Math.round(nextVal);
                 }
                 if (!calculationOk) return null;
 
@@ -683,7 +683,7 @@
                     let tileClasses = 'tile w-full h-full flex items-center justify-center rounded-lg font-bold cursor-pointer';
                     if (cell.type === 'operator') {
                         tileClasses += ' operator';
-                        tile.innerHTML = cell.value === '*' ? '&times;' : cell.value.replace('-', '−');
+                        tile.innerHTML = cell.value === '*' ? '&times;' : cell.value === '/' ? '÷' : cell.value.replace('-', '−');
                         switch(cell.value) {
                             case '+': tile.classList.add('op-plus'); break;
                             case '-': tile.classList.add('op-minus'); break;
@@ -718,22 +718,7 @@
             for (let i = 0; i < gameState.currentPath.length - 1; i++) {
                 const startNode = document.querySelector(`[data-row='${gameState.currentPath[i].row}'][data-col='${gameState.currentPath[i].col}']`);
                 const endNode = document.querySelector(`[data-row='${gameState.currentPath[i+1].row}'][data-col='${gameState.currentPath[i+1].col}']`);
-                const startRect = startNode.getBoundingClientRect();
-                const endRect = endNode.getBoundingClientRect();
-                const containerRect = gridContainer.getBoundingClientRect();
-                const startX = startRect.left + startRect.width / 2 - containerRect.left;
-                const startY = startRect.top + startRect.height / 2 - containerRect.top;
-                const endX = endRect.left + endRect.width / 2 - containerRect.left;
-                const endY = endRect.top + endRect.height / 2 - containerRect.top;
-                const angle = Math.atan2(endY - startY, endX - startX) * 180 / Math.PI;
-                const length = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
-                const line = document.createElement('div');
-                line.className = 'path-line';
-                line.style.width = `${length}px`;
-                line.style.left = `${startX}px`;
-                line.style.top = `${startY}px`;
-                line.style.transform = `rotate(${angle}deg)`;
-                pathContainer.appendChild(line);
+                drawStaticLine(startNode, endNode, pathContainer);
             }
         };
         
@@ -837,7 +822,10 @@
                     tile.classList.add('selected');
                     
                     if (type === 'number') {
-                        const operator = gameState.currentPath[gameState.currentPath.length - 2].value;
+                        let operator = gameState.currentPath[gameState.currentPath.length - 2].value;
+                        if (operator === '÷') operator = '/';
+                        if (operator === '−') operator = '-';
+                        if (operator === '×') operator = '*';
                         gameState.currentValue = eval(`${gameState.currentValue} ${operator} ${value}`);
                     }
                     updateDisplay();
@@ -882,7 +870,7 @@
             gameState.hintStep++;
             const tilesToShow = gameState.hintStep * 2;
 
-            if (tilesToShow > gameState.solutionPath.length) {
+            if (tilesToShow > gameState.solutionPath.length + 1) { // Allow showing the full path
                 gameState.hintStep = 1;
             }
             
