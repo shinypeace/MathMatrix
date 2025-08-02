@@ -14,8 +14,6 @@
             --bg-primary: #111827;
             --bg-secondary: #1f2937;
             --bg-tertiary: #374151;
-            --bg-interactive: #0ea5e9;
-            --bg-interactive-hover: #0284c7;
             --text-primary: #ffffff;
             --text-secondary: #9ca3af;
             --text-accent: #38bdf8;
@@ -24,24 +22,32 @@
             --btn-restart-text: var(--text-primary);
             --hint-color: #facc15; /* yellow-400 */
             --hint-glow-color: rgba(250, 204, 21, 0.75);
+            /* Operator Colors */
+            --op-plus: #22c55e; /* green-500 */
+            --op-minus: #a855f7; /* purple-500 */
+            --op-multiply: #eab308; /* yellow-500 */
+            --op-divide: #ef4444; /* red-500 */
         }
         
         html.light {
             --bg-primary: #f3f4f6;
             --bg-secondary: #ffffff;
             --bg-tertiary: #e5e7eb;
-            --bg-interactive: #3b82f6;
-            --bg-interactive-hover: #2563eb;
             --text-primary: #1f2937;
             --text-secondary: #6b7280;
             --text-accent: #3b82f6;
             --modal-backdrop: rgba(243, 244, 246, 0.7);
             --btn-restart-bg: #d1d5db;
             --btn-restart-text: #1f2937;
+             /* Operator Colors Light */
+            --op-plus: #16a34a; /* green-600 */
+            --op-minus: #9333ea; /* purple-600 */
+            --op-multiply: #d97706; /* yellow-600 */
+            --op-divide: #dc2626; /* red-600 */
         }
 
         html, body {
-            height: 100vh; /* Use vh to ensure full viewport height */
+            height: 100vh;
             width: 100vw;
             overflow: hidden;
             margin: 0;
@@ -56,9 +62,9 @@
             background-color: var(--bg-primary);
             color: var(--text-primary);
             transition: background-color 0.3s, color 0.3s;
-            display: flex; /* Use flexbox for layout */
+            display: flex;
             flex-direction: column;
-            user-select: none; /* Disable text selection */
+            user-select: none;
             -webkit-user-select: none;
         }
         .screen {
@@ -72,7 +78,7 @@
             height: 100%;
             animation: fadeIn 0.5s ease-in-out;
             background-color: var(--bg-primary);
-            padding-bottom: 50px; /* Space for banner ad */
+            padding-bottom: 50px;
             box-sizing: border-box;
         }
         .screen.active {
@@ -92,10 +98,15 @@
             font-weight: 700;
         }
         .tile.operator {
-             background-color: var(--bg-interactive);
              color: white;
-             font-size: clamp(1.5rem, 7vw, 2.5rem); /* Make operators bigger */
+             font-size: clamp(1.5rem, 7vw, 2.5rem);
+             text-shadow: 0px 1px 2px rgba(0,0,0,0.5);
         }
+        .op-plus { background-color: var(--op-plus); }
+        .op-minus { background-color: var(--op-minus); }
+        .op-multiply { background-color: var(--op-multiply); }
+        .op-divide { background-color: var(--op-divide); }
+
         .tile.selected {
             box-shadow: 0 0 25px var(--text-accent);
             z-index: 10;
@@ -110,7 +121,7 @@
             100% { box-shadow: 0 0 0 15px transparent, 0 0 0 4px transparent; }
         }
         .modal-backdrop {
-            height: 100%; /* Ensure modal covers full screen */
+            height: 100%;
         }
         .path-line {
             position: absolute;
@@ -137,7 +148,10 @@
              color: var(--btn-restart-text);
         }
         .rules-illustration {
-            padding: 0.5rem; /* Prevents glow clipping */
+            padding: 0.5rem;
+            display: flex;
+            justify-content: center;
+            position: relative;
         }
         .menu-btn {
             transition-property: background-color, border-color, color, transform, box-shadow;
@@ -249,8 +263,11 @@
             <div class="flex-grow mt-4 space-y-6 text-left overflow-y-auto" style="color: var(--text-primary);">
                 <p class="text-lg leading-relaxed">Соединяйте <strong style="color: var(--text-accent);">числа</strong> и <strong style="color: var(--text-accent);">операторы</strong>, чтобы получить <strong style="color: var(--text-accent);">целевое значение</strong>.</p>
                 <div class="rules-illustration">
-                    <p class="mb-2 text-center w-full">Пример: получить <strong>15</strong></p>
-                    <div id="rules-grid" class="grid grid-cols-3 gap-2" style="width: 210px; height: 210px;"></div>
+                    <div class="relative">
+                        <p class="mb-2 text-center w-full">Пример: получить <strong>15</strong></p>
+                        <div id="rules-path-container" class="absolute top-0 left-0 w-full h-full"></div>
+                        <div id="rules-grid" class="grid grid-cols-3 gap-2" style="width: 240px; height: 240px;"></div>
+                    </div>
                 </div>
                  <p class="pt-4">Если застряли, нажмите кнопку подсказки 💡.</p>
             </div>
@@ -316,7 +333,7 @@
             '8x8': { size: 8, unlock: 25, numRange: 50, targetRange: 500 },
         };
         const difficultyOrder = ['4x4', '5x5', '6x6', '7x7', '8x8'];
-        const SAVE_KEY = 'mathMatrixStats_v7';
+        const SAVE_KEY = 'mathMatrixStats_v8';
         const AD_FREQUENCY = 3;
 
         // --- Game State ---
@@ -476,7 +493,10 @@
         function showRulesScreen() {
             showScreen('rules');
             const rulesGrid = document.getElementById('rules-grid');
+            const rulesPathContainer = document.getElementById('rules-path-container');
             rulesGrid.innerHTML = '';
+            rulesPathContainer.innerHTML = '';
+
             const example = [
                 {val: 5, type: 'number'}, {val: '×', type: 'operator'}, {val: 7, type: 'number'},
                 {val: '+', type: 'operator'}, {val: 4, type: 'number'}, {val: '−', type: 'operator'},
@@ -487,37 +507,51 @@
             example.forEach((cell, index) => {
                 const tile = document.createElement('div');
                 tile.className = 'tile w-full h-full flex items-center justify-center rounded-lg';
+                tile.dataset.index = index;
+                
                 if(cell.type === 'operator') {
                     tile.classList.add('operator');
                     tile.innerHTML = cell.val === '*' ? '&times;' : cell.val;
+                    switch(cell.val) {
+                        case '+': tile.classList.add('op-plus'); break;
+                        case '−': tile.classList.add('op-minus'); break;
+                        case '×': tile.classList.add('op-multiply'); break;
+                        case '÷': tile.classList.add('op-divide'); break;
+                    }
                 } else {
                     tile.textContent = cell.val;
                 }
-                tile.dataset.index = index;
+
+                if (path.includes(index)) {
+                    tile.classList.add('selected');
+                }
                 rulesGrid.appendChild(tile);
             });
 
-            let step = 0;
-            const animateRulesHint = () => {
-                const tiles = rulesGrid.querySelectorAll('.tile');
-                if (step >= path.length) {
-                    rulesAnimationTimer = setTimeout(() => {
-                        tiles.forEach(t => t.classList.remove('hint-outline'));
-                        step = 0;
-                        if (document.getElementById('rules-screen').classList.contains('active')) {
-                           rulesAnimationTimer = setTimeout(animateRulesHint, 500);
-                        }
-                    }, 2000);
-                    return;
-                }
-                const tileIndex = path[step];
-                const tile = rulesGrid.querySelector(`[data-index='${tileIndex}']`);
-                if(tile) tile.classList.add('hint-outline');
-                step++;
-                rulesAnimationTimer = setTimeout(animateRulesHint, 400);
-            };
-            if(rulesAnimationTimer) clearTimeout(rulesAnimationTimer);
-            animateRulesHint();
+            // Draw static path
+            for (let i = 0; i < path.length - 1; i++) {
+                const startNode = rulesGrid.querySelector(`[data-index='${path[i]}']`);
+                const endNode = rulesGrid.querySelector(`[data-index='${path[i+1]}']`);
+                const startRect = startNode.getBoundingClientRect();
+                const endRect = endNode.getBoundingClientRect();
+                const containerRect = rulesPathContainer.getBoundingClientRect();
+
+                const startX = startRect.left + startRect.width / 2 - containerRect.left;
+                const startY = startRect.top + startRect.height / 2 - containerRect.top;
+                const endX = endRect.left + endRect.width / 2 - containerRect.left;
+                const endY = endRect.top + endRect.height / 2 - containerRect.top;
+
+                const angle = Math.atan2(endY - startY, endX - startX) * 180 / Math.PI;
+                const length = Math.sqrt(Math.pow(endX - startX, 2) + Math.pow(endY - startY, 2));
+
+                const line = document.createElement('div');
+                line.className = 'path-line';
+                line.style.width = `${length}px`;
+                line.style.left = `${startX}px`;
+                line.style.top = `${startY}px`;
+                line.style.transform = `rotate(${angle}deg)`;
+                rulesPathContainer.appendChild(line);
+            }
         }
 
         // --- Level Generation ---
@@ -528,7 +562,7 @@
             let gridData, solutionPath, targetValue;
             
             let attempts = 0;
-            while(attempts < 50) {
+            while(attempts < 100) { // Increased attempts for robustness
                 const result = buildGuaranteedLevel(size, config.numRange, config.targetRange);
                 if(result) {
                     ({ gridData, solutionPath, targetValue } = result);
@@ -650,6 +684,12 @@
                     if (cell.type === 'operator') {
                         tileClasses += ' operator';
                         tile.innerHTML = cell.value === '*' ? '&times;' : cell.value.replace('-', '−');
+                        switch(cell.value) {
+                            case '+': tile.classList.add('op-plus'); break;
+                            case '-': tile.classList.add('op-minus'); break;
+                            case '*': tile.classList.add('op-multiply'); break;
+                            case '/': tile.classList.add('op-divide'); break;
+                        }
                     } else {
                         tile.textContent = cell.value;
                     }
