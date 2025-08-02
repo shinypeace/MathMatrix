@@ -94,7 +94,7 @@
         .tile.operator {
              background-color: var(--bg-interactive);
              color: white;
-             font-size: clamp(1.2rem, 6vw, 2.4rem); /* Make operators bigger */
+             font-size: clamp(1.5rem, 7vw, 2.5rem); /* Make operators bigger */
         }
         .tile.selected {
             box-shadow: 0 0 25px var(--text-accent);
@@ -250,7 +250,7 @@
                 <p class="text-lg leading-relaxed">Соединяйте <strong style="color: var(--text-accent);">числа</strong> и <strong style="color: var(--text-accent);">операторы</strong>, чтобы получить <strong style="color: var(--text-accent);">целевое значение</strong>.</p>
                 <div class="rules-illustration">
                     <p class="mb-2 text-center w-full">Пример: получить <strong>15</strong></p>
-                    <div id="rules-grid" class="grid grid-cols-3 gap-2"></div>
+                    <div id="rules-grid" class="grid grid-cols-3 gap-2" style="width: 210px; height: 210px;"></div>
                 </div>
                  <p class="pt-4">Если застряли, нажмите кнопку подсказки 💡.</p>
             </div>
@@ -316,7 +316,7 @@
             '8x8': { size: 8, unlock: 25, numRange: 50, targetRange: 500 },
         };
         const difficultyOrder = ['4x4', '5x5', '6x6', '7x7', '8x8'];
-        const SAVE_KEY = 'mathMatrixStats_v6';
+        const SAVE_KEY = 'mathMatrixStats_v7';
         const AD_FREQUENCY = 3;
 
         // --- Game State ---
@@ -504,7 +504,9 @@
                     rulesAnimationTimer = setTimeout(() => {
                         tiles.forEach(t => t.classList.remove('hint-outline'));
                         step = 0;
-                        rulesAnimationTimer = setTimeout(animateRulesHint, 500);
+                        if (document.getElementById('rules-screen').classList.contains('active')) {
+                           rulesAnimationTimer = setTimeout(animateRulesHint, 500);
+                        }
                     }, 2000);
                     return;
                 }
@@ -572,13 +574,13 @@
 
             for (let i = 0; i < pathLength; i++) {
                 let possibleOps = findAdjacent(pathCoords[pathCoords.length-1], operatorCells);
-                if(possibleOps.length === 0) break;
+                if(possibleOps.length === 0) return null;
                 let opCell = possibleOps.splice(Math.floor(Math.random() * possibleOps.length), 1)[0];
                 operatorCells = operatorCells.filter(c => c.r !== opCell.r || c.c !== opCell.c);
                 pathCoords.push(opCell);
                 
                 let possibleNums = findAdjacent(opCell, numberCells);
-                if(possibleNums.length === 0) break;
+                if(possibleNums.length === 0) return null;
                 let numCell = possibleNums.splice(Math.floor(Math.random() * possibleNums.length), 1)[0];
                 numberCells = numberCells.filter(c => c.r !== numCell.r || c.c !== numCell.c);
                 pathCoords.push(numCell);
@@ -599,7 +601,7 @@
                     } else if (op === '-') {
                         if (nextVal <= 0) continue;
                     }
-                    if (nextVal > targetRange) continue;
+                    if (nextVal > targetRange || nextVal < 1) continue;
                     
                     calculationOk = true;
                     currentVal = nextVal;
@@ -703,6 +705,7 @@
         };
 
         const startLevel = () => {
+            gameState.hintStep = 0;
             resetPath();
             generateLevel();
             drawGrid();
@@ -743,7 +746,6 @@
 
         const resetPath = () => {
             gameState.isDrawing = false;
-            // gameState.hintStep is NOT reset here intentionally
             gameState.currentPath = [];
             gameState.currentValue = 0;
             document.querySelectorAll('.tile.selected').forEach(t => t.classList.remove('selected'));
@@ -758,7 +760,6 @@
             if (tile && tile.dataset.type === 'number') {
                 e.preventDefault();
                 resetPath();
-                gameState.hintStep = 0; // Reset hint progress on new attempt
                 gameState.isDrawing = true;
                 const row = parseInt(tile.dataset.row);
                 const col = parseInt(tile.dataset.col);
@@ -848,7 +849,7 @@
             const finalIndex = Math.min(gameState.hintStep * 2, gameState.solutionPath.length);
 
             for(let i=0; i < finalIndex; i++) {
-                const delay = i * 150; // Stagger animation
+                const delay = i * 150;
                 setTimeout(() => {
                     const tileInfo = gameState.solutionPath[i];
                     const tileElement = document.querySelector(`[data-row='${tileInfo.row}'][data-col='${tileInfo.col}']`);
@@ -907,4 +908,3 @@
     </script>
 </body>
 </html>
-
