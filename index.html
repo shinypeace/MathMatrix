@@ -27,6 +27,7 @@
             --op-minus: #a855f7; /* purple-500 */
             --op-multiply: #eab308; /* yellow-500 */
             --op-divide: #ef4444; /* red-500 */
+            --bg-interactive: #0ea5e9;
         }
         
         html.light {
@@ -44,6 +45,7 @@
             --op-minus: #9333ea; /* purple-600 */
             --op-multiply: #d97706; /* yellow-600 */
             --op-divide: #dc2626; /* red-600 */
+            --bg-interactive: #3b82f6;
         }
 
         html, body {
@@ -507,7 +509,7 @@
                 
                 if(cell.type === 'operator') {
                     tile.classList.add('operator');
-                    tile.innerHTML = cell.val === '*' ? '&times;' : cell.val === '/' ? '÷' : cell.val;
+                    tile.innerHTML = cell.val === '×' ? '&times;' : cell.val;
                     switch(cell.val) {
                         case '+': tile.classList.add('op-plus'); break;
                         case '−': tile.classList.add('op-minus'); break;
@@ -628,7 +630,7 @@
                     num = Math.floor(Math.random() * numRange) + 1;
                     
                     let tempVal = currentVal;
-                    let nextVal = eval(`${tempVal} ${op.replace('÷','/')} ${num}`);
+                    let nextVal = eval(`${tempVal} ${op} ${num}`);
 
                     if (op === '/') {
                         if (tempVal % num !== 0) continue;
@@ -843,7 +845,20 @@
                 setTimeout(levelComplete, 200);
             } else {
                 displays.currentValue.style.color = '#f87171';
-                setTimeout(resetPath, 800);
+                setTimeout(() => {
+                    resetPath();
+                    // After a failed attempt, re-apply the hint if it was active
+                    if (gameState.hintStep > 0) {
+                        const finalIndex = Math.min(gameState.hintStep * 2, gameState.solutionPath.length);
+                        for(let i=0; i < finalIndex; i++) {
+                            const tileInfo = gameState.solutionPath[i];
+                            const tileElement = document.querySelector(`[data-row='${tileInfo.row}'][data-col='${tileInfo.col}']`);
+                            if (tileElement) {
+                               tileElement.classList.add('hint-outline');
+                            }
+                        }
+                    }
+                }, 800);
             }
         };
 
@@ -870,7 +885,7 @@
             gameState.hintStep++;
             const tilesToShow = gameState.hintStep * 2;
 
-            if (tilesToShow > gameState.solutionPath.length + 1) { // Allow showing the full path
+            if (tilesToShow > gameState.solutionPath.length + 1) {
                 gameState.hintStep = 1;
             }
             
