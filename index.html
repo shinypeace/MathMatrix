@@ -674,27 +674,38 @@
     grid.style.gridTemplateColumns = `repeat(${gameState.gridSize}, 1fr)`;
     grid.style.gridTemplateRows = `repeat(${gameState.gridSize}, 1fr)`;
 
+    // Карта для замены стандартных операторов на визуальные символы
+    const displaySymbols = {
+        '*': '×',
+        '/': '÷'
+    };
+
     gameState.gridData.forEach((row, r) => {
         row.forEach((cell, c) => {
             const tile = document.createElement('div');
-            tile.className = 'tile flex items-center justify-center';
+            // ИСПРАВЛЕНИЕ 1: Возвращаем скругления
+            tile.className = 'tile flex items-center justify-center rounded-xl'; 
             tile.dataset.row = r;
             tile.dataset.col = c;
             tile.dataset.type = cell.type;
-            tile.dataset.value = cell.value;
+            // В данных ячейки по-прежнему хранятся '*' и '/' для вычислений
+            tile.dataset.value = cell.value; 
 
-            tile.textContent = cell.value;
+            // ИСПРАВЛЕНИЕ 2: Устанавливаем правильный текст для отображения
+            if (cell.type === 'operator') {
+                tile.textContent = displaySymbols[cell.value] || cell.value;
+            } else {
+                tile.textContent = cell.value;
+            }
 
             if (cell.type === 'operator') {
                 tile.classList.add('operator');
-                // Карта для сопоставления символа оператора с его CSS-классом
                 const opClassMap = {
                     '+': 'op-plus',
                     '-': 'op-minus',
-                    '*': 'op-multiply',
-                    '/': 'op-divide'
+                    '*': 'op-multiply', // Класс остаётся привязанным к '*'
+                    '/': 'op-divide'    // Класс остаётся привязанным к '/'
                 };
-                // Применяем класс, если он есть в карте
                 if (opClassMap[cell.value]) {
                     tile.classList.add(opClassMap[cell.value]);
                 }
