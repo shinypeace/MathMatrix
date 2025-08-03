@@ -670,36 +670,39 @@
 
         // --- Drawing Functions ---
         const drawGrid = () => {
-            grid.innerHTML = '';
-            grid.style.gridTemplateColumns = `repeat(${gameState.gridSize}, 1fr)`;
-            grid.style.gridTemplateRows = `repeat(${gameState.gridSize}, 1fr)`;
+    grid.innerHTML = '';
+    grid.style.gridTemplateColumns = `repeat(${gameState.gridSize}, 1fr)`;
+    grid.style.gridTemplateRows = `repeat(${gameState.gridSize}, 1fr)`;
 
-            gameState.gridData.forEach((row, r) => {
-                row.forEach((cell, c) => {
-                    const tile = document.createElement('div');
-                    tile.dataset.row = r;
-                    tile.dataset.col = c;
-                    tile.dataset.value = cell.value;
-                    tile.dataset.type = cell.type;
-                    
-                    let tileClasses = 'tile w-full h-full flex items-center justify-center rounded-lg font-bold cursor-pointer';
-                    if (cell.type === 'operator') {
-                        tileClasses += ' operator';
-                        tile.innerHTML = cell.value === '*' ? '&times;' : cell.value === '/' ? '÷' : cell.value.replace('-', '−');
-                        switch(cell.value) {
-                            case '+': tile.classList.add('op-plus'); break;
-                            case '-': tile.classList.add('op-minus'); break;
-                            case '*': tile.classList.add('op-multiply'); break;
-                            case '/': tile.classList.add('op-divide'); break;
-                        }
-                    } else {
-                        tile.textContent = cell.value;
-                    }
-                    tile.className = tileClasses;
-                    grid.appendChild(tile);
-                });
-            });
-        };
+    gameState.gridData.forEach((row, r) => {
+        row.forEach((cell, c) => {
+            const tile = document.createElement('div');
+            tile.className = 'tile flex items-center justify-center';
+            tile.dataset.row = r;
+            tile.dataset.col = c;
+            tile.dataset.type = cell.type;
+            tile.dataset.value = cell.value;
+
+            tile.textContent = cell.value;
+
+            if (cell.type === 'operator') {
+                tile.classList.add('operator');
+                // Карта для сопоставления символа оператора с его CSS-классом
+                const opClassMap = {
+                    '+': 'op-plus',
+                    '-': 'op-minus',
+                    '*': 'op-multiply',
+                    '/': 'op-divide'
+                };
+                // Применяем класс, если он есть в карте
+                if (opClassMap[cell.value]) {
+                    tile.classList.add(opClassMap[cell.value]);
+                }
+            }
+            grid.appendChild(tile);
+        });
+    });
+};
 
         const updateDisplay = () => {
             displays.level.textContent = gameStats[gameState.difficulty].levelsCompleted + 1;
